@@ -368,11 +368,6 @@ def alpha_beta(alpha, beta, stare):
 	return stare
 	
 
-
-
-
-
-
 def afis_daca_final(stare_curenta):
 	final=stare_curenta.tabla_joc.final()
 	if(final):
@@ -492,10 +487,32 @@ def deseneaza_alegeri(display, tabla_curenta) :
 							return btn_juc.getValoare(), btn_alg.getValoare()
 		pygame.display.update()
 
+def timpi_calculator(timpi_gandire):
+	"""
+	Aceasta functie calculeaza timpul minim, maxim si mediu de gandire al calculatorului
+	timpi_gandire == lista timpilor de gandire (variabile int, in milisecunde) ai calculatorului pentru fiecare mutare
 
+	returneaza valorile min, max, mediu, mediana in aceasta ordine
+	"""
+	min = sys.maxsize
+	max = 0
+	mediu = 0
+	for i in timpi_gandire:
+		if min > i:
+			min = i
+		if max < i:
+			max = i
+		mediu += i
+	mediu = mediu / len(timpi_gandire)
+
+	debug = int(len(timpi_gandire)/2)
+
+	mediana = sorted(timpi_gandire)[int(len(timpi_gandire)/2)]
+	return (min, max, mediu, mediana)
 
 def main():
 
+	timp_start = int(round(time.time() * 1000)) #Timpul cand a fost pornit programul
 	#setari interf grafica
 	pygame.init()
 	pygame.display.set_caption("Alecu Florin Gabriel: ex-jocuri-exemple-modificate")
@@ -530,12 +547,18 @@ def main():
 	stare_curenta=Stare(tabla_curenta,'x',ADANCIME_MAX)
 
 	tabla_curenta.deseneaza_grid()
+
+	t_inainte_jucator = int(round(time.time() * 1000)) #Preiau timpul de dinainte pentru jucator (se reseteaza dupa ce face calculatorul o mutare)
+
+	timp_gandire_calculator = []
+
 	while True :
 		if (stare_curenta.j_curent==Joc.JMIN):
-			
 			for event in pygame.event.get():
 				if event.type== pygame.QUIT:
 					#iesim din program
+					timp_final = int(round(time.time() * 1000)) #Timpul cand a fost inchis programul
+					print("Programul a rulat timp de "+str(timp_final - timp_start)+" milisecunde.")
 					pygame.quit()
 					sys.exit()
 
@@ -549,8 +572,9 @@ def main():
 							linie=np//Joc.NR_LINII
 							coloana=np%Joc.NR_COLOANE
 							
+							#verifica daca se poate pune un simbol aici	
 							if stare_curenta.tabla_joc.matr[linie][coloana] == Joc.GOL:
-								#verifica daca se poate pune un simbol aici	
+								t_dupa_jucator=int(round(time.time() * 1000)) #Preia timpul dupa ce s-a facut mutarea
 
 								stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
 								stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
@@ -564,9 +588,12 @@ def main():
 								#si afisez un mesaj corespunzator in caz ca da
 								if (afis_daca_final(stare_curenta)):
 									stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=coloana, stare_curenta=stare_curenta)
+									min, max, medie, mediana = timpi_calculator(timp_gandire_calculator)
+									print("Timpul minim de gandire al calculatorului: {0}\nTimpul maxim de gandire al calculatorului: {1}\nTimpul mediu de gandire al calculatorului: {2}\nTimpul median de gandire al calculatorului: {3}".format(min, max, medie, mediana))
 									break
 									
-									
+								print("Utilizatorul a \"gandit\" timp de "+str(t_dupa_jucator-t_inainte_jucator)+" milisecunde.") #Afisaza timpul de gandire al jucatorului
+														
 								#S-a realizat o mutare. Schimb jucatorul cu cel opus
 								stare_curenta.j_curent=Joc.jucator_opus(stare_curenta.j_curent)
 
@@ -589,16 +616,24 @@ def main():
 			#preiau timpul in milisecunde de dupa mutare
 			t_dupa=int(round(time.time() * 1000))
 			print("Calculatorul a \"gandit\" timp de "+str(t_dupa-t_inainte)+" milisecunde.")
-			
+
+			timp_gandire_calculator.append(t_dupa-t_inainte)
+
 			stare_curenta.tabla_joc.deseneaza_grid()
 			if (afis_daca_final(stare_curenta)):
+				stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=coloana, stare_curenta=stare_curenta)
+				min, max, medie, mediana = timpi_calculator(timp_gandire_calculator)
+				print("Timpul minim de gandire al calculatorului: {0}\nTimpul maxim de gandire al calculatorului: {1}\nTimpul mediu de gandire al calculatorului: {2}\nTimpul median de gandire al calculatorului: {3}".format(min, max, medie, mediana))
 				break
 				
 			#S-a realizat o mutare. Schimb jucatorul cu cel opus
 			stare_curenta.j_curent=Joc.jucator_opus(stare_curenta.j_curent)
+
+			t_inainte_jucator = int(round(time.time() * 1000)) # Preiau timpul initial pentru jucator
 	
 if __name__ == "__main__" :
 	main()
+
 	while True :
 		for event in pygame.event.get():
 			if event.type== pygame.QUIT:
