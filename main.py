@@ -47,24 +47,76 @@ class Joc:
 
 	
 
-	def deseneaza_grid(self, coloana_marcaj=None): # tabla de exemplu este ["#","x","#","0",......]
+	def deseneaza_grid(self, coloana_marcaj=None, stare_curenta=None): # tabla de exemplu este ["#","x","#","0",......]
+		"""
+		Deseneaza grid
+
+		Coloreaza cu rosu patratelele pierzatoare
+		"""
+		pozitii_pierzatoare = []
+		if stare_curenta != None:
+			if stare_curenta.tabla_joc.final():
+				directii = [[(0, 1), (0, -1)], [(1, 1), (-1, -1)], [(1, -1), (-1, 1)], [(1, 0), (-1, 0)]]
+				for dir in directii:
+					pozitionare_temporar = []
+					nr_mutari1 = 0
+					nr_mutari2 = 0
+					um1 = self.ultima_mutare # (l,c)
+					um2 = self.ultima_mutare # (l,c)
+					culoare = self.matr[um1[0]][um1[1]]
+					while True:
+						um1 = (um1[0] + dir[0][0], um1[1] + dir[0][1])
+						if not 0 <= um1[0] < self.__class__.NR_LINII or not 0 <= um1[1] < self.__class__.NR_COLOANE:
+							break
+						if not self.matr[um1[0]][um1[1]] == culoare:
+							break
+						pozitionare_temporar.append(um1)
+						nr_mutari1 += 1
+
+					while True:
+						um2 = (um2[0] + dir[1][0], um2[1] + dir[1][1])
+						if not 0 <= um2[0] < self.__class__.NR_LINII or not 0 <= um2[1] < self.__class__.NR_COLOANE:
+							break
+						if not self.matr[um2[0]][um2[1]] == culoare:
+							break
+						pozitionare_temporar.append(um2)
+						nr_mutari2 += 1
+
+					if len(pozitionare_temporar) >= 2:
+						pozitii_pierzatoare = pozitionare_temporar
+						pozitii_pierzatoare.append(stare_curenta.tabla_joc.ultima_mutare)
+						break
+
 
 		for ind in range(self.__class__.NR_COLOANE*self.__class__.NR_LINII):
 			linie=ind // self.__class__.NR_COLOANE # // inseamna div
 			coloana=ind % self.__class__.NR_COLOANE
 
-			if coloana == coloana_marcaj:
-				#daca am o patratica selectata, o desenez cu rosu
-				culoare=(255,255,0)
+			if stare_curenta != None:
+				simbol_pierzator = '0'
+				if stare_curenta.tabla_joc.final() == '0':
+					simbol_pierzator = 'x'
+				else:
+					simbol_pierzator = '0'
+				if stare_curenta.tabla_joc.final() and len(pozitii_pierzatoare) > 0:
+					for i in range(0, len(pozitii_pierzatoare)):
+						if linie == pozitii_pierzatoare[i][0] and coloana == pozitii_pierzatoare[i][1]:
+							culoare=(255,0,0)
+							break
+						else:
+							culoare=(255,255,255)
+				else:
+					culoare=(255,255,255)
+
 			else:
 				#altfel o desenez cu alb
 				culoare=(255,255,255)
+
 			pygame.draw.rect(self.__class__.display, culoare, self.__class__.celuleGrid[ind]) #alb = (255,255,255)
 			if self.matr[linie][coloana]=='x':
 				self.__class__.display.blit(self.__class__.x_img,(coloana*(self.__class__.dim_celula+1),linie*(self.__class__.dim_celula+1)))
 			elif self.matr[linie][coloana]=='0':
 				self.__class__.display.blit(self.__class__.zero_img,(coloana*(self.__class__.dim_celula+1),linie*(self.__class__.dim_celula+1)))
-		#pygame.display.flip()			
 		pygame.display.update()			
 
 	@classmethod
@@ -107,11 +159,16 @@ class Joc:
 		rez = False
 		for per_dir in directii:
 			len_culoare = self.parcurgere(per_dir[0]) + self.parcurgere(per_dir[1]) + 1 # +1 pt chiar ultima mutare
-			if len_culoare >= 4:
+			if len_culoare >= 3:
 				rez = self.matr[um[0]][um[1]]
-	 
+
 		if(rez):
+			if rez == 'x':
+				return '0'
+			if rez == '0':
+				return 'x'
 			return rez
+			
 		elif all(self.__class__.GOL not in x for x in self.matr):
 			return 'remiza'
 		else:
@@ -169,17 +226,7 @@ class Joc:
 				linii += self.linie_deschisa([self.matr[i+k][j-k] for k in range(0, 4)],jucator)
 		
 		return linii
-		
-		"""return (self.linie_deschisa(self.matr[0:3],jucator) 
-			+ self.linie_deschisa(self.matr[3:6], jucator) 
-			+ self.linie_deschisa(self.matr[6:9], jucator)
-			+ self.linie_deschisa(self.matr[0:9:3], jucator)
-			+ self.linie_deschisa(self.matr[1:9:3], jucator)
-			+ self.linie_deschisa(self.matr[2:9:3], jucator)
-			+ self.linie_deschisa(self.matr[0:9:4], jucator) #prima diagonala
-			+ self.linie_deschisa(self.matr[2:8:2], jucator)) # a doua diagonala
-		"""	
-		
+
 	def estimeaza_scor(self, adancime):
 		t_final=self.final()
 		#if (adancime==0):
@@ -451,16 +498,23 @@ def main():
 
 	#setari interf grafica
 	pygame.init()
-	pygame.display.set_caption("4 in line")
+	pygame.display.set_caption("Alecu Florin Gabriel: ex-jocuri-exemple-modificate")
+
 	#dimensiunea ferestrei in pixeli
-	nl=6
-	nc=7
+	#nl=6
+	#nc=7
+
+	#nr = int(input())
+	nr = 5
+	nl = nr
+	nc = nr
+
 	w=50
 	ecran=pygame.display.set_mode(size=(nc*(w+1)-1,nl*(w+1)-1))# N *w+ N-1= N*(w+1)-1
 	Joc.initializeaza(ecran, NR_LINII=nl, NR_COLOANE=nc, dim_celula=w)
 
 	#initializare tabla
-	tabla_curenta=Joc(NR_LINII=6,NR_COLOANE=7);
+	tabla_curenta=Joc(NR_LINII=nl,NR_COLOANE=nc)
 	Joc.JMIN, tip_algoritm = deseneaza_alegeri(ecran,tabla_curenta)
 	print(Joc.JMIN, tip_algoritm)
 
@@ -477,7 +531,6 @@ def main():
 
 	tabla_curenta.deseneaza_grid()
 	while True :
-
 		if (stare_curenta.j_curent==Joc.JMIN):
 			
 			for event in pygame.event.get():
@@ -485,14 +538,6 @@ def main():
 					#iesim din program
 					pygame.quit()
 					sys.exit()
-				if event.type == pygame.MOUSEMOTION:
-					
-					pos = pygame.mouse.get_pos()#coordonatele cursorului
-					for np in range(len(Joc.celuleGrid)):						
-						if Joc.celuleGrid[np].collidepoint(pos):
-							
-								stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=np%Joc.NR_COLOANE)
-								break
 
 				elif event.type == pygame.MOUSEBUTTONDOWN:
 					
@@ -501,18 +546,14 @@ def main():
 					for np in range(len(Joc.celuleGrid)):
 						
 						if Joc.celuleGrid[np].collidepoint(pos):
-							#linie=np//Joc.NR_COLOANE
+							linie=np//Joc.NR_LINII
 							coloana=np%Joc.NR_COLOANE
-							###############################
 							
-							if stare_curenta.tabla_joc.matr[0][coloana] == Joc.GOL:	
-								niv=0
-								while True:
-									if niv == Joc.NR_LINII or stare_curenta.tabla_joc.matr[niv][coloana] != Joc.GOL:
-										stare_curenta.tabla_joc.matr[niv - 1][coloana] = Joc.JMIN
-										stare_curenta.tabla_joc.ultima_mutare=(niv-1, coloana)
-										break
-									niv += 1
+							if stare_curenta.tabla_joc.matr[linie][coloana] == Joc.GOL:
+								#verifica daca se poate pune un simbol aici	
+
+								stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
+								stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
 								
 								#afisarea starii jocului in urma mutarii utilizatorului
 								print("\nTabla dupa mutarea jucatorului")
@@ -522,6 +563,7 @@ def main():
 								#testez daca jocul a ajuns intr-o stare finala
 								#si afisez un mesaj corespunzator in caz ca da
 								if (afis_daca_final(stare_curenta)):
+									stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=coloana, stare_curenta=stare_curenta)
 									break
 									
 									
