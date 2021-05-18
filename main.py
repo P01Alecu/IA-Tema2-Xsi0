@@ -375,7 +375,14 @@ def afis_daca_final(stare_curenta):
 			print("Remiza!")
 		else:
 			print("A castigat "+final)
-			
+
+		mutari_jucator = 0
+		mutari_calculator = 0
+		for i in stare_curenta.tabla_joc.matr:
+			mutari_jucator += i.count(stare_curenta.tabla_joc.JMIN)
+			mutari_calculator += i.count(stare_curenta.tabla_joc.JMAX)
+		print("Jucatorul a facut {0} mutari, iar calculatorul a facut {1} mutari.".format(mutari_jucator, mutari_calculator))
+
 		return True
 		
 	return False
@@ -461,16 +468,27 @@ def deseneaza_alegeri(display, tabla_curenta) :
 			],
 		indiceSelectat=1)
 	btn_juc=GrupButoane(
-		top=100, 
+		top=70, 
 		left=30, 
 		listaButoane=[
 			Buton(display=display, w=35, h=30, text="x", valoare="x"), 
 			Buton(display=display, w=35, h=30, text="zero", valoare="0")
 			], 
 		indiceSelectat=0)
-	ok=Buton(display=display, top=170, left=30, w=40, h=30, text="ok", culoareFundal=(155,0,55))
+	dificultate_joc=GrupButoane(
+		top=110,
+		left=30,
+		listaButoane=[
+			Buton(display=display, w=50, h=30, text="Usor", valoare="usor"), 
+			Buton(display=display, w=50, h=30, text="Mediu", valoare="mediu"),
+			Buton(display=display, w=50, h=30, text="Greu", valoare="greu")
+			],
+		indiceSelectat=0
+	)
+	ok=Buton(display=display, top=150, left=30, w=40, h=30, text="ok", culoareFundal=(155,0,55))
 	btn_alg.deseneaza()
 	btn_juc.deseneaza()
+	dificultate_joc.deseneaza()
 	ok.deseneaza()
 	while True:
 		for ev in pygame.event.get(): 
@@ -481,10 +499,11 @@ def deseneaza_alegeri(display, tabla_curenta) :
 				pos = pygame.mouse.get_pos()
 				if not btn_alg.selecteazaDupacoord(pos):
 					if not btn_juc.selecteazaDupacoord(pos):
-						if ok.selecteazaDupacoord(pos):
-							display.fill((0,0,0)) #stergere ecran 
-							tabla_curenta.deseneaza_grid()
-							return btn_juc.getValoare(), btn_alg.getValoare()
+						if not dificultate_joc.selecteazaDupacoord(pos):
+							if ok.selecteazaDupacoord(pos):
+								display.fill((0,0,0)) #stergere ecran 
+								tabla_curenta.deseneaza_grid()
+								return btn_juc.getValoare(), btn_alg.getValoare(), dificultate_joc.getValoare()
 		pygame.display.update()
 
 def timpi_calculator(timpi_gandire):
@@ -505,17 +524,42 @@ def timpi_calculator(timpi_gandire):
 		mediu += i
 	mediu = mediu / len(timpi_gandire)
 
-	debug = int(len(timpi_gandire)/2)
-
 	mediana = sorted(timpi_gandire)[int(len(timpi_gandire)/2)]
 	return (min, max, mediu, mediana)
 
-def main():
+def selectie_valida(tabla_joc, linie, coloana, simbol):
+	"""
+	verifica daca selectia jucatorului este una valida 
+	verificam daca avem un simbol vecin de acelasi fel 
+	"""
 
+	linie_min = 0
+	linie_max = linie
+	coloana_min = 0
+	coloana_max = coloana
+	if linie != 0:
+		linie_min = linie - 1
+	if linie != len(tabla_joc.matr) - 1:
+		linie_max = linie + 1
+	if coloana != 0:
+		coloana_min = coloana - 1
+	if coloana != len(tabla_joc.matr[0]) - 1:
+		coloana_max = coloana + 1
+	for i in range(linie_min, linie_max + 1):
+		for j in range(coloana_min, coloana_max + 1):
+			if tabla_joc.matr[i][j] == simbol:
+				return True
+	return False
+
+def main():
 	timp_start = int(round(time.time() * 1000)) #Timpul cand a fost pornit programul
 	#setari interf grafica
 	pygame.init()
 	pygame.display.set_caption("Alecu Florin Gabriel: ex-jocuri-exemple-modificate")
+
+	#Memoreaza daca este prima mutare pentru calculator/jucator
+	prima_mutare_jucator = True
+	prima_mutare_calculator = True
 
 	#dimensiunea ferestrei in pixeli
 	#nl=6
@@ -532,13 +576,11 @@ def main():
 
 	#initializare tabla
 	tabla_curenta=Joc(NR_LINII=nl,NR_COLOANE=nc)
-	Joc.JMIN, tip_algoritm = deseneaza_alegeri(ecran,tabla_curenta)
+	Joc.JMIN, tip_algoritm, dificultate = deseneaza_alegeri(ecran,tabla_curenta)
 	print(Joc.JMIN, tip_algoritm)
 
-
 	Joc.JMAX= '0' if Joc.JMIN == 'x' else 'x'
-	
-	
+
 
 	print("Tabla initiala")
 	print(str(tabla_curenta))
@@ -576,9 +618,16 @@ def main():
 							if stare_curenta.tabla_joc.matr[linie][coloana] == Joc.GOL:
 								t_dupa_jucator=int(round(time.time() * 1000)) #Preia timpul dupa ce s-a facut mutarea
 
-								stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
-								stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
-								
+								if prima_mutare_jucator:
+									stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
+									stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
+								elif selectie_valida(stare_curenta.tabla_joc, linie, coloana, Joc.JMIN):
+									stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
+									stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
+								else:
+									continue
+								prima_mutare_jucator = False
+
 								#afisarea starii jocului in urma mutarii utilizatorului
 								print("\nTabla dupa mutarea jucatorului")
 								print(str(stare_curenta))
@@ -586,6 +635,7 @@ def main():
 								stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=coloana)
 								#testez daca jocul a ajuns intr-o stare finala
 								#si afisez un mesaj corespunzator in caz ca da
+								#afisez timpii de gandire ai calculatorului
 								if (afis_daca_final(stare_curenta)):
 									stare_curenta.tabla_joc.deseneaza_grid(coloana_marcaj=coloana, stare_curenta=stare_curenta)
 									min, max, medie, mediana = timpi_calculator(timp_gandire_calculator)
@@ -593,7 +643,7 @@ def main():
 									break
 									
 								print("Utilizatorul a \"gandit\" timp de "+str(t_dupa_jucator-t_inainte_jucator)+" milisecunde.") #Afisaza timpul de gandire al jucatorului
-														
+
 								#S-a realizat o mutare. Schimb jucatorul cu cel opus
 								stare_curenta.j_curent=Joc.jucator_opus(stare_curenta.j_curent)
 
@@ -616,7 +666,6 @@ def main():
 			#preiau timpul in milisecunde de dupa mutare
 			t_dupa=int(round(time.time() * 1000))
 			print("Calculatorul a \"gandit\" timp de "+str(t_dupa-t_inainte)+" milisecunde.")
-
 			timp_gandire_calculator.append(t_dupa-t_inainte)
 
 			stare_curenta.tabla_joc.deseneaza_grid()
