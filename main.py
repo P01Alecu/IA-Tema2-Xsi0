@@ -3,7 +3,8 @@ import copy
 import pygame
 import sys
 
-
+ADANCIME_USOR=1
+ADANCIME_MEDIU=3
 ADANCIME_MAX=4
 
 
@@ -175,24 +176,21 @@ class Joc:
 			return False
 
 	def mutari(self, jucator):
+		"""
+		Parcurg fiecare element al matricei si daca pot adauga un simbol fac o copie a instantei JOC de acea matrice si o adaug in l_mutari
+		"""
+		
 		l_mutari=[]
-		for j in range(self.__class__.NR_COLOANE):
-			last_poz = None
-			if self.matr[0][j] != self.__class__.GOL:
-				continue
-			for i in range(self.__class__.NR_LINII):
-				if self.matr[i][j]!=self.__class__.GOL:
-						last_poz = (i-1,j)
-						break			 
-			if last_poz is None:
-				last_poz = (self.__class__.NR_LINII-1, j)
-			matr_tabla_noua = copy.deepcopy(self.matr)
-			matr_tabla_noua[last_poz[0]][last_poz[1]] = jucator
-			jn=Joc(matr_tabla_noua)
-			jn.ultima_mutare=(last_poz[0],last_poz[1])
-			l_mutari.append(jn)
+		for i in range(0, len(self.matr)):	#matricea este NxN
+			for j in range(0, len(self.matr)): 
+				if self.matr[i][j]==Joc.GOL and selectie_valida(self, i, j, jucator):
+					#rezultat = selectie_valida(self, i, j, jucator)
+					copie_matr=copy.deepcopy(self.matr)
+					copie_matr[i][j]=jucator
+					jn=Joc(copie_matr)
+					jn.ultima_mutare = (i, j)
+					l_mutari.append(jn)
 		return l_mutari
-
 
 	#linie deschisa inseamna linie pe care jucatorul mai poate forma o configuratie castigatoare
 	#practic e o linie fara simboluri ale jucatorului opus
@@ -288,10 +286,10 @@ class Stare:
 		
 	
 	def __str__(self):
-		sir= str(self.tabla_joc) + "(Juc curent:"+self.j_curent+")\n"
+		sir= str(self.tabla_joc) + "\t(Jucator curent:"+self.j_curent+")\n"
 		return sir	
 	def __repr__(self):
-		sir= str(self.tabla_joc) + "(Juc curent:"+self.j_curent+")\n"
+		sir= str(self.tabla_joc) + "\t(Jucator curent:"+self.j_curent+")\n"
 		return sir
 	
 
@@ -530,8 +528,17 @@ def timpi_calculator(timpi_gandire):
 def selectie_valida(tabla_joc, linie, coloana, simbol):
 	"""
 	verifica daca selectia jucatorului este una valida 
+	primaMutare este utila pentru mutarea calculatorului, pentru jucator se face in functia main()
 	verificam daca avem un simbol vecin de acelasi fel 
 	"""
+	if simbol == Joc.JMAX:
+		primaMutare = True
+		for i in range(0, len(tabla_joc.matr)):
+			for j in range(0, len(tabla_joc.matr)):
+				if tabla_joc.matr[i][j] == simbol:
+					primaMutare = False
+		if primaMutare:
+			return True
 
 	linie_min = 0
 	linie_max = linie
@@ -586,7 +593,14 @@ def main():
 	print(str(tabla_curenta))
 	
 	#creare stare initiala
-	stare_curenta=Stare(tabla_curenta,'x',ADANCIME_MAX)
+	if dificultate == 'usor':
+		adancime = ADANCIME_USOR
+	elif dificultate == 'mediu':
+		adancime = ADANCIME_MEDIU
+	else:
+		adancime = ADANCIME_MAX
+
+	stare_curenta=Stare(tabla_curenta,'x',adancime)
 
 	tabla_curenta.deseneaza_grid()
 
@@ -618,15 +632,12 @@ def main():
 							if stare_curenta.tabla_joc.matr[linie][coloana] == Joc.GOL:
 								t_dupa_jucator=int(round(time.time() * 1000)) #Preia timpul dupa ce s-a facut mutarea
 
-								if prima_mutare_jucator:
+								if prima_mutare_jucator or selectie_valida(stare_curenta.tabla_joc, linie, coloana, Joc.JMIN):
 									stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
 									stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
-								elif selectie_valida(stare_curenta.tabla_joc, linie, coloana, Joc.JMIN):
-									stare_curenta.tabla_joc.matr[linie][coloana] = Joc.JMIN
-									stare_curenta.tabla_joc.ultima_mutare=(linie, coloana)
+									prima_mutare_jucator = False
 								else:
 									continue
-								prima_mutare_jucator = False
 
 								#afisarea starii jocului in urma mutarii utilizatorului
 								print("\nTabla dupa mutarea jucatorului")
